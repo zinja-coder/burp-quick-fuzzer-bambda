@@ -5,13 +5,13 @@
 ## Why?
 - During lots of my application security engagments, client asks me not to perform automatic scann and intruder fuzzing but still they want to manually cover common payloads. This is the solution for such scenarios where I can automate my small manual payload testing with one click solution.
 
-## 🔧 Features
+## Features
 - Sends a small list of fuzzing payloads - You can add/remove yours payloads.
 - Fast, scriptable, and useful for quick checks during manual testing.
 - Modify as Per Need - Add/remove payloads and checks as per requirements
 - You can modify the delay between requests as well.
 
-## 🚀 Usage
+## Usage
 
 https://github.com/user-attachments/assets/f37399fe-9459-407d-9493-6da9b0f91c91
 
@@ -31,7 +31,7 @@ https://github.com/user-attachments/assets/5e3cccd4-2da3-4390-b6b3-34217651ff0c
 
 https://github.com/user-attachments/assets/be76b0f2-4a07-4b00-a901-53414d099b6f
 
-## 📦 Payloads Included - Modifiable
+## Payloads Included - Modifiable
 
 - SQLI
 - XSS
