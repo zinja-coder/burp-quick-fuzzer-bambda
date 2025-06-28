@@ -23,6 +23,14 @@ https://github.com/user-attachments/assets/b8fb43fd-9121-429b-8735-09a00018edc7
 4. Select a request in **Repeater** context.
 5. Run the script to send all payloads and view responses.
 
+## Add Delay
+
+https://github.com/user-attachments/assets/5e3cccd4-2da3-4390-b6b3-34217651ff0c
+
+## Add/Remove Payloads
+
+https://github.com/user-attachments/assets/be76b0f2-4a07-4b00-a901-53414d099b6f
+
 ## 📦 Payloads Included - Modifiable
 
 - SQLI
