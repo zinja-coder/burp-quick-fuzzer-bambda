@@ -20,8 +20,9 @@ https://github.com/user-attachments/assets/b8fb43fd-9121-429b-8735-09a00018edc7
 1. Open Burp Suite.
 2. Navigate to **Extender → Bambda Scripts**.
 3. Click **"Load"**, select `quick-fuzzer.bambda`.
-4. Select a request in **Repeater** context.
-5. Run the script to send all payloads and view responses.
+4. Set Location as `Custom Action` and `Repeater`, see the video
+5. Select a request in **Repeater** context.
+6. Run the script to send all payloads and view responses.
 
 ## Add Delay
 
