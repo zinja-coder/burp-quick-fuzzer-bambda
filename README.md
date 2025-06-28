@@ -59,4 +59,6 @@ https://github.com/user-attachments/assets/be76b0f2-4a07-4b00-a901-53414d099b6f
 > When you can run scan and fuzz, comment out the technical payloads and quickly test for non-technical payloads like invalid emails.
 > 
 > Note: This is not replacement of intruder/scanner, it is just a custom action for repeater to solve very specific issue of automation of manual test cases. Read the script before running and check if it matches your use case.
+>
+> It is not new ground breaking tool or anything like that.
 
