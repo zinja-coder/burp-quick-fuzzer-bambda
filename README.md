@@ -23,8 +23,16 @@
 - SQLI
 - XSS
 - SSTI
+- JSON Injection
+- LDAP Injection
+- Path Traversal
+- NOSQLI
 - Command Injection
+- Special Character Allowed or Not
+- String Format Payloads
 - Business Logic Payloads
+- Input Length
+- Invalid Emails
 - Invalid Date
 - Invalid Time
 - Negative Values
@@ -32,4 +40,5 @@
 
 > You can customize or extend the payload list directly in the script.
 > You can add/remove attacks types as well, i.e commenting out the payloads for invalid date will not perform that check.
+> When you can run scan and fuzz, comment out the technical payloads and quickly test for non-technical payloads like invalid emails.
 
