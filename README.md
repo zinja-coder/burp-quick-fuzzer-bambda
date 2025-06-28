@@ -3,6 +3,7 @@
 **Quick Fuzzer** is a Burp Suite Bambda script for Custom Repeater Action that lets you instantly fuzz parameter insertion points with a basic set of payloads — without needing a to leave repeater tab.
 
 ## Why?
+- To learn bambda script development.
 - During lots of my application security engagments, client asks me not to perform automatic scann and intruder fuzzing but still they want to manually cover common payloads. This is the solution for such scenarios where I can automate my small manual payload testing with one click solution.
 
 ## Features
