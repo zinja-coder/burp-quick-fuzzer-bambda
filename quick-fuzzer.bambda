@@ -110,6 +110,38 @@ String[] EMAIL_BYPASS_PAYLOADS = {
     "\"test\"@test.com"
 };
 
+// Buffer Overflow/Large Payloads
+String[] BUFFER_OVERFLOW_PAYLOADS = {
+    "A".repeat(1000),
+    "A".repeat(5000),
+    "A".repeat(10000),
+    "\x41".repeat(1000),
+    "%41".repeat(1000)
+};
+
+// Integer Overflow/Underflow
+String[] INTEGER_OVERFLOW_PAYLOADS = {
+    "2147483647",   // Max 32-bit signed int
+    "2147483648",   // Max 32-bit signed int + 1
+    "-2147483648",  // Min 32-bit signed int
+    "-2147483649",  // Min 32-bit signed int - 1
+    "4294967295",   // Max 32-bit unsigned int
+    "4294967296",   // Max 32-bit unsigned int + 1
+    "9223372036854775807",  // Max 64-bit signed int
+    "9223372036854775808"   // Max 64-bit signed int + 1
+};
+
+// Unicode/Encoding Tests
+String[] UNICODE_PAYLOADS = {
+    "\u0000",
+    "\u0001\u0002\u0003\u0004\u0005",
+    "\uFEFF",
+    "\u202E",
+    "\u200B\u200C\u200D",
+    "test\u0000admin",
+    "admin\uFEFFtest"
+};
+
 // JSON Injection
 String[] JSON_INJECTION_PAYLOADS = {
     "\",\"injected\":\"true\",\"a\":\"",
