@@ -877,6 +877,120 @@ for (burp.api.montoya.http.message.params.HttpParameter param: allParams) {
             logging.logToError("Error with Business Logic Payload '" + bPayload + "': " + e.getStackTrace());
     	}
     }
+
+// -------------------------- Test 18: Buffer Overflow PAYLOADS -------------------- //
+    logging.logToOutput("[ === Testing Buffer Overflow PAYLOADS === ] ");
+    for (String bufferPayload: BUFFER_OVERFLOW_PAYLOADS) {
+        var modifiedRequest = originalRequest.withParameter(
+            burp.api.montoya.http.message.params.HttpParameter.parameter(
+                paramName, bufferPayload, param.type()
+            )
+        );
+
+        try {
+            var response = api.http().sendRequest(modifiedRequest);
+            
+            // delay between requests
+            Thread.sleep(GLOBAL_DELAY_MS);
+         
+            int status = response.response().statusCode();
+            int responseLength = response.response().body().length();
+
+            String result = "Buffer Overflow Payload: '" + bufferPayload.length() + " chars'";
+            logging.logToOutput("[ === " + result + " -> Status: " + status + " === ]");
+
+            // create request/response for organizer
+            var requestResponseForOrganizer = burp.api.montoya.http.message.HttpRequestResponse.httpRequestResponse(modifiedRequest, response.response());
+            // set annotations
+            requestResponseForOrganizer.annotations().setNotes(result);
+            // send to organizer
+            api.organizer().sendToOrganizer(requestResponseForOrganizer);
+
+            results.append(result + "\n");
+            totalRequests++;
+        } catch (Exception e) {
+            logging.logToError("[ ======================================= ]");
+            logging.logToError("[ === QUICK FUZZER BAMBDA CUSTOM ACTION ERROR === ]");
+            logging.logToError("[ ======================================= ]");
+            logging.logToError("Error with Buffer Overflow Payload '" + bufferPayload.length() + " chars': " + e.getStackTrace());
+        }
+    }
+
+    // -------------------------- Test 19: Integer Overflow PAYLOADS -------------------- //
+    logging.logToOutput("[ === Testing Integer Overflow PAYLOADS === ] ");
+    for (String intPayload: INTEGER_OVERFLOW_PAYLOADS) {
+        var modifiedRequest = originalRequest.withParameter(
+            burp.api.montoya.http.message.params.HttpParameter.parameter(
+                paramName, intPayload, param.type()
+            )
+        );
+
+        try {
+            var response = api.http().sendRequest(modifiedRequest);
+            
+            // delay between requests
+            Thread.sleep(GLOBAL_DELAY_MS);
+         
+            int status = response.response().statusCode();
+            int responseLength = response.response().body().length();
+
+            String result = "Integer Overflow Payload: '" + intPayload + "'";
+            logging.logToOutput("[ === " + result + " -> Status: " + status + " === ]");
+
+            // create request/response for organizer
+            var requestResponseForOrganizer = burp.api.montoya.http.message.HttpRequestResponse.httpRequestResponse(modifiedRequest, response.response());
+            // set annotations
+            requestResponseForOrganizer.annotations().setNotes(result);
+            // send to organizer
+            api.organizer().sendToOrganizer(requestResponseForOrganizer);
+
+            results.append(result + "\n");
+            totalRequests++;
+        } catch (Exception e) {
+            logging.logToError("[ ======================================= ]");
+            logging.logToError("[ === QUICK FUZZER BAMBDA CUSTOM ACTION ERROR === ]");
+            logging.logToError("[ ======================================= ]");
+            logging.logToError("Error with Integer Overflow Payload '" + intPayload + "': " + e.getStackTrace());
+        }
+    }
+
+    // -------------------------- Test 20: Unicode PAYLOADS -------------------- //
+    logging.logToOutput("[ === Testing Unicode PAYLOADS === ] ");
+    for (String unicodePayload: UNICODE_PAYLOADS) {
+        var modifiedRequest = originalRequest.withParameter(
+            burp.api.montoya.http.message.params.HttpParameter.parameter(
+                paramName, unicodePayload, param.type()
+            )
+        );
+
+        try {
+            var response = api.http().sendRequest(modifiedRequest);
+            
+            // delay between requests
+            Thread.sleep(GLOBAL_DELAY_MS);
+         
+            int status = response.response().statusCode();
+            int responseLength = response.response().body().length();
+
+            String result = "Unicode Payload: '" + unicodePayload + "'";
+            logging.logToOutput("[ === " + result + " -> Status: " + status + " === ]");
+
+            // create request/response for organizer
+            var requestResponseForOrganizer = burp.api.montoya.http.message.HttpRequestResponse.httpRequestResponse(modifiedRequest, response.response());
+            // set annotations
+            requestResponseForOrganizer.annotations().setNotes(result);
+            // send to organizer
+            api.organizer().sendToOrganizer(requestResponseForOrganizer);
+
+            results.append(result + "\n");
+            totalRequests++;
+        } catch (Exception e) {
+            logging.logToError("[ ======================================= ]");
+            logging.logToError("[ === QUICK FUZZER BAMBDA CUSTOM ACTION ERROR === ]");
+            logging.logToError("[ ======================================= ]");
+            logging.logToError("Error with Unicode Payload '" + unicodePayload + "': " + e.getStackTrace());
+        }
+    }
     
 }
     
