@@ -115,7 +115,7 @@ String[] BUFFER_OVERFLOW_PAYLOADS = {
     "A".repeat(1000),
     "A".repeat(5000),
     "A".repeat(10000),
-    "\x41".repeat(1000),
+    "\\x41".repeat(1000),
     "%41".repeat(1000)
 };
 
