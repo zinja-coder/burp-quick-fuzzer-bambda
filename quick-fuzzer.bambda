@@ -7,7 +7,7 @@
 // Uncomment and add more payloads as per requirement
 
 // Delay variable, Adjust as per requirement - 1000 = 1 second delay
-int GLOBAL_DELAY_MS = 1000; 
+int GLOBAL_DELAY_MS = 100; 
 
 // Burp Collborator host or any host name like example.com
 String hostname = "<BURPCOLLABORATOR>";
@@ -328,6 +328,7 @@ for (burp.api.montoya.http.message.params.HttpParameter param: allParams) {
     logging.logToOutput("[ === Testing Special characters === ] ");
     for (String specialChar: SPECIAL_CHARS) {
     	String newValue = originalValue + specialChar;
+    if (param.type() == HttpParameterType.URL) {newValue = java.net.URLEncoder.encode(newValue, "UTF-8");}
         var modifiedRequest = originalRequest.withParameter(
     		burp.api.montoya.http.message.params.HttpParameter.parameter(
     			paramName, newValue, param.type()
@@ -368,6 +369,7 @@ for (burp.api.montoya.http.message.params.HttpParameter param: allParams) {
     logging.logToOutput("[ === Testing XSS PAYLOADS === ] ");
     for (String xssPayload: XSS_PAYLOADS) {
     	//String newValue = originalValue + xssPayload;
+        if (param.type() == HttpParameterType.URL) {xssPayload = java.net.URLEncoder.encode(xssPayload, "UTF-8");}
         var modifiedRequest = originalRequest.withParameter(
     		burp.api.montoya.http.message.params.HttpParameter.parameter(
     			paramName, xssPayload, param.type()
@@ -407,6 +409,7 @@ for (burp.api.montoya.http.message.params.HttpParameter param: allParams) {
     logging.logToOutput("[ === Testing SQLI PAYLOADS === ] ");
     for (String sqliPayload: SQLI_PAYLOADS) {
     	String newValue = originalValue + sqliPayload;
+        if (param.type() == HttpParameterType.URL) {newValue = java.net.URLEncoder.encode(newValue, "UTF-8");}
         var modifiedRequest = originalRequest.withParameter(
     		burp.api.montoya.http.message.params.HttpParameter.parameter(
     			paramName, newValue, param.type()
@@ -471,6 +474,7 @@ for (burp.api.montoya.http.message.params.HttpParameter param: allParams) {
     // -------------------------- Test 5: INVALID DATES -------------------- //
     for (String date: INVALID_DATES) {
     	//String newValue = originalValue + date;
+        if (param.type() == HttpParameterType.URL) {date = java.net.URLEncoder.encode(date, "UTF-8");}
         var modifiedRequest = originalRequest.withParameter(
     		burp.api.montoya.http.message.params.HttpParameter.parameter(
     			paramName, date, param.type()
@@ -510,6 +514,7 @@ for (burp.api.montoya.http.message.params.HttpParameter param: allParams) {
     // -------------------------- Test 6: INVALID TIME -------------------- //
     for (String time: INVALID_TIMES) {
     	//String newValue = originalValue + date;
+        if (param.type() == HttpParameterType.URL) {time = java.net.URLEncoder.encode(time, "UTF-8");}
         var modifiedRequest = originalRequest.withParameter(
     		burp.api.montoya.http.message.params.HttpParameter.parameter(
     			paramName, time, param.type()
@@ -547,7 +552,7 @@ for (burp.api.montoya.http.message.params.HttpParameter param: allParams) {
     
     // -------------------------- Test 7: NEGATIVE VALUES -------------------- //
     logging.logToOutput("[ === Testing NEGATIVE PAYLOADS === ] ");
-    String negativeValue = "-" + originalValue;
+    String negativeValue = "-" + originalValue.toString();
     var modifiedRequestNegative = originalRequest.withParameter(
     	burp.api.montoya.http.message.params.HttpParameter.parameter(
     		paramName, originalValue, param.type())
@@ -572,62 +577,11 @@ for (burp.api.montoya.http.message.params.HttpParameter param: allParams) {
             logging.logToError("Error with NEGATIVE Payload '" + paramName + "': " + e.getStackTrace());
     	}
     
-    // -------------------------- Test 8: INPUT LENGTH -------------------- //
-    logging.logToOutput("[ === Testing INPUT LENGTH === ] ");
-    StringBuilder longCharString = new StringBuilder();
-    for (int i = 0; i < 300; i++) {
-    	longCharString.append("a"); 
-    }
-    StringBuilder longIntString = new StringBuilder();
-    for (int i = 0; i < 300; i++) {
-    	longIntString.append("1");
-    }
-    
-    ArrayList<StringBuilder> longStrings = new ArrayList<>();
-    longStrings.add(longIntString);
-    longStrings.add(longCharString);
-    
-    for (StringBuilder longString: longStrings) {
-    	var modifiedRequest = originalRequest.withParameter(
-    		burp.api.montoya.http.message.params.HttpParameter.parameter(
-    			paramName, longString.toString(), param.type()
-    		)
-    	);
-    
-    	try {
-    		var response = api.http().sendRequest(modifiedRequest);
-            
-            // delay between requests
-            Thread.sleep(GLOBAL_DELAY_MS);
-         
-            int status = response.response().statusCode();
-            int responseLength = response.response().body().length();
-    
-    		String result = "Long String: ";
- 			logging.logToOutput("[ === " + result + " -> Status: " + status + " === ]");
-    
-    		// create request/response for organizer
-    		var requestResponseForOrganizer = burp.api.montoya.http.message.HttpRequestResponse.httpRequestResponse(modifiedRequestEmpty, response.response());
-    		// set annotations
-            requestResponseForOrganizer.annotations().setNotes(result);
-            // send to organizer
-            api.organizer().sendToOrganizer(requestResponseForOrganizer);
-    
-    		results.append(result + "\n");
-            totalRequests++;
-    	} catch (Exception e) {
-    		logging.logToError("[ ======================================= ]");
-    		logging.logToError("[ === QUICK FUZZER BAMBDA CUSTOM ACTION ERROR === ]");
-    		logging.logToError("[ ======================================= ]");
-            logging.logToError("Error with Long String:  '" + longString.toString() + "': " + e.getStackTrace());
-    	}
-    } 
-    
-    
     // -------------------------- Test 9: SSTI -------------------- //
     logging.logToOutput("[ === Testing SSTI PAYLOADS === ] ");
     for (String sstiPayload: SSTI_PAYLOADS) {
     	//String newValue = originalValue + xssPayload;
+        if (param.type() == HttpParameterType.URL) {sstiPayload = java.net.URLEncoder.encode(sstiPayload, "UTF-8");}
         var modifiedRequest = originalRequest.withParameter(
     		burp.api.montoya.http.message.params.HttpParameter.parameter(
     			paramName, sstiPayload, param.type()
@@ -667,6 +621,7 @@ for (burp.api.montoya.http.message.params.HttpParameter param: allParams) {
     logging.logToOutput("[ === Testing NOSQLI PAYLOADS === ] ");
     for (String nosqliPayload: NOSQL_INJECTION_PAYLOADS) {
     	String newValue = originalValue + nosqliPayload;
+        if (param.type() == HttpParameterType.URL) {nosqliPayload = java.net.URLEncoder.encode(nosqliPayload, "UTF-8");}
         var modifiedRequest = originalRequest.withParameter(
     		burp.api.montoya.http.message.params.HttpParameter.parameter(
     			paramName, newValue, param.type()
@@ -706,6 +661,7 @@ for (burp.api.montoya.http.message.params.HttpParameter param: allParams) {
     logging.logToOutput("[ === Testing Path Traversal PAYLOADS === ] ");
     for (String pathPayload: PATH_TRAVERSAL_PAYLOADS) {
     	//String newValue = originalValue + nosqliPayload;
+        if (param.type() == HttpParameterType.URL) {pathPayload = java.net.URLEncoder.encode(pathPayload, "UTF-8");}
         var modifiedRequest = originalRequest.withParameter(
     		burp.api.montoya.http.message.params.HttpParameter.parameter(
     			paramName, pathPayload, param.type()
@@ -745,6 +701,7 @@ for (burp.api.montoya.http.message.params.HttpParameter param: allParams) {
     logging.logToOutput("[ === Testing Command Injection PAYLOADS === ] ");
     for (String commandPayload: COMMAND_INJECTION_PAYLOADS) {
     	//String newValue = originalValue + nosqliPayload;
+        if (param.type() == HttpParameterType.URL) {commandPayload = java.net.URLEncoder.encode(commandPayload, "UTF-8");}
         var modifiedRequest = originalRequest.withParameter(
     		burp.api.montoya.http.message.params.HttpParameter.parameter(
     			paramName, commandPayload, param.type()
@@ -784,6 +741,7 @@ for (burp.api.montoya.http.message.params.HttpParameter param: allParams) {
     logging.logToOutput("[ === Testing LDAP Injection PAYLOADS === ] ");
     for (String ldapPayload: LDAP_INJECTION_PAYLOADS) {
     	//String newValue = originalValue + nosqliPayload;
+        if (param.type() == HttpParameterType.URL) {ldapPayload = java.net.URLEncoder.encode(ldapPayload, "UTF-8");}
         var modifiedRequest = originalRequest.withParameter(
     		burp.api.montoya.http.message.params.HttpParameter.parameter(
     			paramName, ldapPayload, param.type()
@@ -823,6 +781,7 @@ for (burp.api.montoya.http.message.params.HttpParameter param: allParams) {
     logging.logToOutput("[ === Testing JSON Injection PAYLOADS === ] ");
     for (String jsonPayload: JSON_INJECTION_PAYLOADS) {
     	//String newValue = originalValue + nosqliPayload;
+        if (param.type() == HttpParameterType.URL) {jsonPayload = java.net.URLEncoder.encode(jsonPayload, "UTF-8");}
         var modifiedRequest = originalRequest.withParameter(
     		burp.api.montoya.http.message.params.HttpParameter.parameter(
     			paramName, jsonPayload, param.type()
@@ -862,6 +821,7 @@ for (burp.api.montoya.http.message.params.HttpParameter param: allParams) {
     logging.logToOutput("[ === Testing Invalid Emails PAYLOADS === ] ");
     for (String emailPayload: EMAIL_BYPASS_PAYLOADS) {
     	//String newValue = originalValue + nosqliPayload;
+        if (param.type() == HttpParameterType.URL) {emailPayload = java.net.URLEncoder.encode(emailPayload, "UTF-8");}
         var modifiedRequest = originalRequest.withParameter(
     		burp.api.montoya.http.message.params.HttpParameter.parameter(
     			paramName, emailPayload, param.type()
@@ -901,6 +861,7 @@ for (burp.api.montoya.http.message.params.HttpParameter param: allParams) {
     logging.logToOutput("[ === Testing String Format PAYLOADS === ] ");
     for (String stringformatPayload: FORMAT_STRING_PAYLOADS) {
     	//String newValue = originalValue + nosqliPayload;
+        if (param.type() == HttpParameterType.URL) {stringformatPayload = java.net.URLEncoder.encode(stringformatPayload, "UTF-8");}
         var modifiedRequest = originalRequest.withParameter(
     		burp.api.montoya.http.message.params.HttpParameter.parameter(
     			paramName, stringformatPayload, param.type()
@@ -941,6 +902,7 @@ for (burp.api.montoya.http.message.params.HttpParameter param: allParams) {
     logging.logToOutput("[ === Testing Business Logic PAYLOADS === ] ");
     for (String bPayload: BUSINESS_LOGIC_PAYLOADS) {
     	//String newValue = originalValue + nosqliPayload;
+        if (param.type() == HttpParameterType.URL) {bPayload = java.net.URLEncoder.encode(bPayload, "UTF-8");}
         var modifiedRequest = originalRequest.withParameter(
     		burp.api.montoya.http.message.params.HttpParameter.parameter(
     			paramName, bPayload, param.type()
@@ -979,6 +941,7 @@ for (burp.api.montoya.http.message.params.HttpParameter param: allParams) {
 // -------------------------- Test 18: Buffer Overflow PAYLOADS -------------------- //
     logging.logToOutput("[ === Testing Buffer Overflow PAYLOADS === ] ");
     for (String bufferPayload: BUFFER_OVERFLOW_PAYLOADS) {
+        if (param.type() == HttpParameterType.URL) {bufferPayload = java.net.URLEncoder.encode(bufferPayload, "UTF-8");}
         var modifiedRequest = originalRequest.withParameter(
             burp.api.montoya.http.message.params.HttpParameter.parameter(
                 paramName, bufferPayload, param.type()
@@ -1017,6 +980,7 @@ for (burp.api.montoya.http.message.params.HttpParameter param: allParams) {
     // -------------------------- Test 19: Integer Overflow PAYLOADS -------------------- //
     logging.logToOutput("[ === Testing Integer Overflow PAYLOADS === ] ");
     for (String intPayload: INTEGER_OVERFLOW_PAYLOADS) {
+        if (param.type() == HttpParameterType.URL) {intPayload = java.net.URLEncoder.encode(intPayload, "UTF-8");}
         var modifiedRequest = originalRequest.withParameter(
             burp.api.montoya.http.message.params.HttpParameter.parameter(
                 paramName, intPayload, param.type()
@@ -1055,6 +1019,7 @@ for (burp.api.montoya.http.message.params.HttpParameter param: allParams) {
     // -------------------------- Test 20: Unicode PAYLOADS -------------------- //
     logging.logToOutput("[ === Testing Unicode PAYLOADS === ] ");
     for (String unicodePayload: UNICODE_PAYLOADS) {
+        if (param.type() == HttpParameterType.URL) {unicodePayload = java.net.URLEncoder.encode(unicodePayload, "UTF-8");}
         var modifiedRequest = originalRequest.withParameter(
             burp.api.montoya.http.message.params.HttpParameter.parameter(
                 paramName, unicodePayload, param.type()
@@ -1093,6 +1058,7 @@ for (burp.api.montoya.http.message.params.HttpParameter param: allParams) {
     // -------------------------- Test 21: SSI PAYLOADS -------------------- //
     logging.logToOutput("[ === Testing Unicode PAYLOADS === ] ");
     for (String ssiPayload: SSI_PAYLOADS) {
+        if (param.type() == HttpParameterType.URL) {ssiPayload = java.net.URLEncoder.encode(ssiPayload, "UTF-8");}
         var modifiedRequest = originalRequest.withParameter(
             burp.api.montoya.http.message.params.HttpParameter.parameter(
                 paramName, ssiPayload, param.type()
@@ -1131,6 +1097,7 @@ for (burp.api.montoya.http.message.params.HttpParameter param: allParams) {
         // -------------------------- Test 21: XXE Injection -------------------- //
     logging.logToOutput("[ === Testing XXE PAYLOADS === ] ");
     for (String xxePayload: XXE_PAYLOADS) {
+        if (param.type() == HttpParameterType.URL) {xxePayload = java.net.URLEncoder.encode(xxePayload, "UTF-8");}
         var modifiedRequest = originalRequest.withParameter(
             burp.api.montoya.http.message.params.HttpParameter.parameter(
                 paramName, xxePayload, param.type()
@@ -1159,6 +1126,7 @@ for (burp.api.montoya.http.message.params.HttpParameter param: allParams) {
         // -------------------------- Test 24: XPATH Injection -------------------- //
     logging.logToOutput("[ === Testing XPATH Injection PAYLOADS === ] ");
     for (String xpathPayload: XPATH_INJECTION_PAYLOADS) {
+        if (param.type() == HttpParameterType.URL) {xpathPayload = java.net.URLEncoder.encode(xpathPayload, "UTF-8");}
         var modifiedRequest = originalRequest.withParameter(
             burp.api.montoya.http.message.params.HttpParameter.parameter(
                 paramName, xpathPayload, param.type()
@@ -1187,6 +1155,7 @@ for (burp.api.montoya.http.message.params.HttpParameter param: allParams) {
     // -------------------------- Test 26: Deserialization Attack -------------------- //
     logging.logToOutput("[ === Testing Deserialization PAYLOADS === ] ");
     for (String deserPayload: DESERIALIZATION_PAYLOADS) {
+        if (param.type() == HttpParameterType.URL) {deserPayload = java.net.URLEncoder.encode(deserPayload, "UTF-8");}
         var modifiedRequest = originalRequest.withParameter(
             burp.api.montoya.http.message.params.HttpParameter.parameter(
                 paramName, deserPayload, param.type()
@@ -1216,6 +1185,7 @@ for (burp.api.montoya.http.message.params.HttpParameter param: allParams) {
     logging.logToOutput("[ === Testing NULL BYTE PAYLOADS === ] ");
     for (String nullPayload: NULLBYTE_PAYLOADS) {
         String newValue = originalValue + nullPayload;
+        if (param.type() == HttpParameterType.URL) {newValue = java.net.URLEncoder.encode(newValue, "UTF-8");}
         var modifiedRequest = originalRequest.withParameter(
             burp.api.montoya.http.message.params.HttpParameter.parameter(
                 paramName, newValue, param.type()
@@ -1245,6 +1215,7 @@ for (burp.api.montoya.http.message.params.HttpParameter param: allParams) {
     logging.logToOutput("[ === Testing SSRF PAYLOADS === ] ");
     for (String ssrfPayload: SSRF_PAYLOADS) {
         //String newValue = originalValue + nullPayload;
+        if (param.type() == HttpParameterType.URL) {ssrfPayload = java.net.URLEncoder.encode(ssrfPayload, "UTF-8");}
         var modifiedRequest = originalRequest.withParameter(
             burp.api.montoya.http.message.params.HttpParameter.parameter(
                 paramName, ssrfPayload, param.type()
