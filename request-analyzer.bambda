@@ -10,10 +10,10 @@
 // - Cache Poisoning attempts
 
 // Delay variable, Adjust as per requirement - 1000 = 1 second delay
-int GLOBAL_DELAY_MS = 200;
+int GLOBAL_DELAY_MS = 1000;
 
 // Burp Collborator host or any host name like example.com
-String hostname = "<BURPCOLLABORATOR>";
+String hostname = "<BURPCOLLABORATORHOST>";
 
 // 403 Bypass Headers
 String[] BYPASS_HEADERS = {
@@ -218,29 +218,29 @@ for (String hostPayload : HOST_PAYLOADS) {
 }
 
 // -------------------------- Test 5: 403 Bypass Headers -------------------- //
-logging.logToOutput("[ === Testing 403 Bypass Headers === ]");
+//logging.logToOutput("[ === Testing 403 Bypass Headers === ]");
 
-for (String bypassHeader : BYPASS_HEADERS) {
-    for (String bypassIP : BYPASS_IPS) {
-        try {
-            var bypassRequest = originalRequest.withHeader(bypassHeader, bypassIP);
+//for (String bypassHeader : BYPASS_HEADERS) {
+//    for (String bypassIP : BYPASS_IPS) {
+//        try {
+//            var bypassRequest = originalRequest.withHeader(bypassHeader, bypassIP);
+//            
+//            var response = api.http().sendRequest(bypassRequest);
+//            Thread.sleep(GLOBAL_DELAY_MS);
             
-            var response = api.http().sendRequest(bypassRequest);
-            Thread.sleep(GLOBAL_DELAY_MS);
+//            int status = response.response().statusCode();
+//            String result = "403 Bypass - " + bypassHeader + ": " + bypassIP;
+//            logging.logToOutput("[ === " + result + " -> Status: " + status + " === ]");
             
-            int status = response.response().statusCode();
-            String result = "403 Bypass - " + bypassHeader + ": " + bypassIP;
-            logging.logToOutput("[ === " + result + " -> Status: " + status + " === ]");
-            
-            var requestResponseForOrganizer = burp.api.montoya.http.message.HttpRequestResponse.httpRequestResponse(bypassRequest, response.response());
-            requestResponseForOrganizer.annotations().setNotes(result);
-            api.organizer().sendToOrganizer(requestResponseForOrganizer);
-            totalRequests++;
-        } catch (Exception e) {
-            logging.logToError("Error with 403 Bypass: " + e.getMessage());
-        }
-    }
-}
+//            var requestResponseForOrganizer = burp.api.montoya.http.message.HttpRequestResponse.httpRequestResponse(bypassRequest, response.response());
+//            requestResponseForOrganizer.annotations().setNotes(result);
+//            api.organizer().sendToOrganizer(requestResponseForOrganizer);
+//            totalRequests++;
+//        } catch (Exception e) {
+//            logging.logToError("Error with 403 Bypass: " + e.getMessage());
+//        }
+//    }
+//}
 
 // -------------------------- Test 6: HTTP Method Override -------------------- //
 logging.logToOutput("[ === Testing HTTP Method Override === ]");
@@ -481,7 +481,7 @@ if (originalBody.length() > 0) {
     try {
         var doubleClRequest = originalRequest
             .withHeader("Content-Length", String.valueOf(originalBody.length()))
-            .withAddedHeader("Content-Length", "0");
+            .withAddedHeader("Content-Length", "500");
         
         var response = api.http().sendRequest(doubleClRequest);
         Thread.sleep(GLOBAL_DELAY_MS);
@@ -744,7 +744,7 @@ for (String testCookie : commonSessionCookies) {
 
 
 // -------------------------- Test 21: Server-Side Request Forgery (SSRF) -------------------- //
-logging.logToOutput("[ === Testing SSRF in Headers === ]");
+//logging.logToOutput("[ === Testing SSRF in Headers === ]");
 
 String[] ssrfPayloads = {
     // Internal network discovery
@@ -822,26 +822,26 @@ String[] ssrfHeaders = {
     "Location"
 };
 
-for (String ssrfHeader : ssrfHeaders) {
-    for (String ssrfPayload : ssrfPayloads) {
-        try {
-            var ssrfRequest = originalRequest.withHeader(ssrfHeader, ssrfPayload);
-            var response = api.http().sendRequest(ssrfRequest);
-            Thread.sleep(GLOBAL_DELAY_MS);
+//for (String ssrfHeader : ssrfHeaders) {
+//    for (String ssrfPayload : ssrfPayloads) {
+//        try {
+//            var ssrfRequest = originalRequest.withHeader(ssrfHeader, ssrfPayload);
+//            var response = api.http().sendRequest(ssrfRequest);
+//            Thread.sleep(GLOBAL_DELAY_MS);
             
-            int status = response.response().statusCode();
-            String result = "SSRF Test - " + ssrfHeader + ": " + ssrfPayload;
-            logging.logToOutput("[ === " + result + " -> Status: " + status + " === ]");
+//            int status = response.response().statusCode();
+//            String result = "SSRF Test - " + ssrfHeader + ": " + ssrfPayload;
+//            logging.logToOutput("[ === " + result + " -> Status: " + status + " === ]");
             
-            var requestResponseForOrganizer = burp.api.montoya.http.message.HttpRequestResponse.httpRequestResponse(ssrfRequest, response.response());
-            requestResponseForOrganizer.annotations().setNotes(result);
-            api.organizer().sendToOrganizer(requestResponseForOrganizer);
-            totalRequests++;
-        } catch (Exception e) {
-            logging.logToError("Error with SSRF: " + e.getMessage());
-        }
-    }
-}
+//            var requestResponseForOrganizer = burp.api.montoya.http.message.HttpRequestResponse.httpRequestResponse(ssrfRequest, response.response());
+//            requestResponseForOrganizer.annotations().setNotes(result);
+//            api.organizer().sendToOrganizer(requestResponseForOrganizer);
+//            totalRequests++;
+//        } catch (Exception e) {
+//            logging.logToError("Error with SSRF: " + e.getMessage());
+//        }
+//    }
+//}
 
 // -------------------------- Test 18: Range Header Attacks -------------------- //
 //logging.logToOutput("[ === Testing Range Header Attacks === ]");
